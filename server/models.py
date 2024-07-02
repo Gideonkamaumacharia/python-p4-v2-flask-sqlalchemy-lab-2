@@ -11,22 +11,64 @@ metadata = MetaData(naming_convention={
 db = SQLAlchemy(metadata=metadata)
 
 
-class Customer(db.Model):
+class Customer(db.Model,SerializerMixin):
     __tablename__ = 'customers'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
 
+    reviews = db.relationship('Review', back_populates='customer')
+
+    items = association_proxy('reviews', 'item')
+
+    def to_dict(self):
+        return {'id': self.id,
+                'name': self.name,
+                'reviews': [{'id': review.id, 'comment': review.comment} for review in self.reviews]
+}
+                #'reviews':[review.to_dict() for review in self.reviews]}
     def __repr__(self):
         return f'<Customer {self.id}, {self.name}>'
 
 
-class Item(db.Model):
+class Item(db.Model, SerializerMixin):
     __tablename__ = 'items'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     price = db.Column(db.Float)
 
+    reviews = db.relationship('Review', back_populates='item')
+
+    def to_dict(self):
+        return {'id': self.id,
+                'name': self.name,
+                'price': self.price,
+                'reviews': [{'id': review.id, 'comment': review.comment} for review in self.reviews]
+        }
     def __repr__(self):
         return f'<Item {self.id}, {self.name}, {self.price}>'
+
+class Review(db.Model, SerializerMixin):
+    __tablename__= 'reviews'
+
+    id = db.Column(db.Integer,primary_key=True)
+    comment = db.Column(db.String)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'))
+    item_id = db.Column(db.Integer,db.ForeignKey('items.id'))
+
+    #create a relationship with customer
+    customer = db.relationship('Customer', back_populates='reviews')
+    item = db.relationship('Item', back_populates='reviews')
+
+    def to_dict(self):
+        return {'id': self.id,
+                'comment': self.comment,
+                'customer': self.customer.to_dict(),
+                'item': self.item.to_dict()
+                
+        }
+                
+
+    def __repr__(self):
+        return f'<Item {self.id}, {self.comment}, {self.customer}, {self.item}>'
